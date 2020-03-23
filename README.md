@@ -1,5 +1,7 @@
 # Simple Web Server
 
+Self-education project.
+
 To-do:
 
 - Develop simple TCP-server in Ruby
