@@ -1,10 +1,14 @@
 require 'socket'
 require 'securerandom'
+require 'cgi'
+require 'json'
 
 server = TCPServer.new 1985
 
 def client_req(session)
-    method, path, proto = session.gets.split
+    method, full_path, proto = session.gets.split
+    path, query = full_path.split('?')
+    query.nil? ? query_params = "" : query_params = CGI::parse(query)
     headers = {}
     while line = session.gets.split(' ', 2)
         break if line[0] == ""
@@ -12,7 +16,13 @@ def client_req(session)
     end
     data = session.read(headers["Content-Length"].to_i)
 
-    request = {"method" => method, "headers" => headers, "body" => data}
+    request = {
+        "method" => method, 
+        "path" => path,
+        "query" => query_params,
+        "headers" => headers,
+        "body" => data
+    }
 end
 
 def server_resp_200OK
@@ -31,14 +41,15 @@ def log_server_resp(response, uid)
     puts response
 end
 
+def server_resp(x_req_id, req)
+    "#{server_resp_200OK}\r\nX-Request-ID: #{x_req_id}\r\nContent-Type: application/json\r\n\r\n#{req.to_json}"
+end
+
 while session = server.accept
     request = client_req(session)
     log_uid = SecureRandom.hex(10)
     log_client_req(request, log_uid)
-    session.puts server_resp_200OK
-    session.puts "X-Request-ID: #{log_uid}"
+    session.print server_resp(log_uid, request)
     log_server_resp(server_resp_200OK, log_uid)
     session.close
 end
-
-server.close
