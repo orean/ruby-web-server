@@ -1,9 +1,9 @@
 require 'socket'
+require 'securerandom'
 
 server = TCPServer.new 1985
 
-while session = server.accept
-    
+def client_req(session)
     method, path, proto = session.gets.split
     headers = {}
     while line = session.gets.split(' ', 2)
@@ -12,15 +12,32 @@ while session = server.accept
     end
     data = session.read(headers["Content-Length"].to_i)
 
-    puts "#{method} #{path} #{proto}"
-    puts headers
-    puts "\r\n"
-    puts data
+    request = {"method" => method, "headers" => headers, "body" => data}
+end
 
-    session.puts "HTTP/1.1 200 OK\r\n"
-    session.puts "Content-Type: text/html\r\n"
-    session.puts "\r\n"
-    session.puts "Hello world!"
+def server_resp_200OK
+    response = "HTTP/1.1 200 OK"
+end
+
+def log_client_req(request, uid)
+    print Time.now
+    print " request_id=#{uid} - server accepted client req: "
+    puts request
+end
+
+def log_server_resp(response, uid)
+    print Time.now
+    print " request_id=#{uid} - server responsed to client: "
+    puts response
+end
+
+while session = server.accept
+    request = client_req(session)
+    log_uid = SecureRandom.hex(10)
+    log_client_req(request, log_uid)
+    session.puts server_resp_200OK
+    session.puts "X-Request-ID: #{log_uid}"
+    log_server_resp(server_resp_200OK, log_uid)
     session.close
 end
 
