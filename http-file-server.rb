@@ -17,16 +17,12 @@ def client_req(session)
     data = session.read(headers["Content-Length"].to_i)
 
     request = {
-        "method" => method, 
-        "path" => path,
-        "query" => query_params,
-        "headers" => headers,
-        "body" => data
+        "REQUEST_METHOD" => method, 
+        "PATH_INFO" => path,
+        "QUERY_STRING" => query_params,
+        "HEADERS" => headers,
+        "BODY" => data
     }
-end
-
-def server_resp_200OK
-    response = "HTTP/1.1 200 OK"
 end
 
 def log_client_req(request, uid)
@@ -41,15 +37,20 @@ def log_server_resp(response, uid)
     puts response
 end
 
-def server_resp(x_req_id, req)
-    "#{server_resp_200OK}\r\nX-Request-ID: #{x_req_id}\r\nContent-Type: application/json\r\n\r\n#{req.to_json}"
+def server_resp(x_req_id, html)
+    body = IO.read(html)
+    "HTTP/1.1 200 OK\r\nX-Request-ID: #{x_req_id}\r\nContent-Type: text/html\r\n\r\n#{body}"
+end
+
+def resp_404(x_req_id)
+    "HTTP/1.1 404 Not Found\r\nX-Request-ID: #{x_req_id}\r\n"
 end
 
 while session = server.accept
     request = client_req(session)
     log_uid = SecureRandom.hex(10)
-    log_client_req(request, log_uid)
-    session.print server_resp(log_uid, request)
-    log_server_resp(server_resp_200OK, log_uid)
+    file = "static" + request['PATH_INFO']
+    file += 'index.html' if file == 'static/'
+    File.file?(file) ? session.print(server_resp(log_uid, file)) : session.print(resp_404(log_uid))
     session.close
 end
