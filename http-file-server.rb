@@ -1,7 +1,6 @@
 require 'socket'
 require 'securerandom'
 require 'cgi'
-require 'json'
 
 server = TCPServer.new 1985
 
